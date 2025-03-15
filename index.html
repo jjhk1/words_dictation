@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    .app {
+      width: 600px;
+      height: 400px;
+      margin: 0 auto;
+    }
+
+    textarea {
+      width: 500px;
+      height: 300px;
+      font-size: 20px;
+      padding: 20px;
+    }
+
+    button {
+      width: 80px;
+      height: 50px;
+      cursor: pointer;
+    }
+
+    .user-input {
+      position: relative;
+      display: inline-block;
+    }
+
+    .user-input input {
+      width: 300px;
+      height: 50px;
+      margin-left: 20px;
+      padding: 0 10px;
+      font-size: 20px;
+    }
+
+    .user-input .hint {
+      position: absolute;
+      top: 60px;
+      left: 20px;
+      font-size: 16px;
+      color: #999;
+      display: none;
+    }
+    
+    .right-answers {
+      color: green;
+    }
+
+    .user-input .hint .judge {
+      color: green;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>输入单词（例：apple,banana,...,little）</h1>
+    <textarea></textarea>
+    <button class="setWords">确定</button>
+    <button class="nextWords">继续</button>
+    <button class="repetition">没听清</button>
+    <audio id="pronunciationAudio" controls style="display:none;">
+      <source id="audioSource" src="./assets/audio/example_pronunciation.mp3" type="audio/mpeg">
+    </audio>
+    <div class="user-input">
+      <input type="text">
+      <div class="hint">
+        <div>
+          <span class="judge correct">正确</span>
+          <span>&nbsp;&nbsp;&nbsp;&nbsp;再次点按回车听下一个</span>
+        </div>
+        <span>正确答案：</span>
+        <span class="right-answers">apple</span>
+      </div>
+    </div>
+  </div>
+  <script src="node_modules\axios\dist\axios.min.js"></script>
+  <script>
+    const setWords = document.querySelector('.setWords')
+    const nextWords = document.querySelector('.nextWords')
+    const textarea = document.querySelector('textarea')
+    let words = []
+    let continue_words = []
+
+    setWords.addEventListener('click', () => {
+      words = textarea.value.split(', ')
+      continue_words = words
+      textarea.style.backgroundColor = 'black'
+      setWords.disabled = true
+      nextWords.click()
+    })
+
+    // 获取source元素和audio元素的引用
+    let sourceElement = document.getElementById('audioSource')
+    let audioElement = document.getElementById('pronunciationAudio')
+
+    let word = ''
+
+    let wrong_words = []
+
+    let curr_over = true
+    nextWords.addEventListener('click', () => {
+      if (continue_words.length <= 0) {
+        alert('本轮听写已完成')
+        textarea.style.backgroundColor = 'white'
+        setWords.disabled = false
+        if (wrong_words.length > 0) {
+          alert(wrong_words.toString() + '\n似乎拼写有错误，请确认并修改')
+          wrong_words = []
+        }
+        return
+      }
+      if (!curr_over) return
+      curr_over = false
+      // 获取随机数，随机挑选单词
+      const index =  Math.floor(Math.random() * (continue_words.length))     // 完整为  Math.floor(Math.random() * (max - min + 1)) + min
+      word = continue_words[index]
+      console.log(words)
+      axios.get(`http://localhost:80/api/getaudio/${word}`).then(res => {
+        if (res.data.data !== '') {
+          const newAudioUrl = res.data.data
+          // 更新source元素的src属性
+          sourceElement.src = newAudioUrl
+
+          // 让audio元素加载新的资源
+          audioElement.load()
+          audioElement.pause()
+          audioElement.play()
+        } else {
+          wrong_words.push(word)
+          console.log('错误单词' + wrong_words.toString())
+          continue_words.splice(index, 1)
+          console.log(continue_words, index)
+          curr_over = true
+          nextWords.click()
+        }
+        continue_words.splice(index, 1)
+        console.log(continue_words, index)
+        curr_over = true
+      }).catch(err => {
+        console.log(err)
+      })
+    })
+
+    // 没听清，再听一遍
+    const repetition = document.querySelector('.repetition')
+
+    repetition.addEventListener('click', () => {
+      audioElement.play()
+    })
+    
+    // 用户输入单词
+    const hint = document.querySelector('.hint')
+    const input = document.querySelector('input')
+    const judge = document.querySelector('.judge')
+    const right_answers = document.querySelector('.right-answers')
+    let submit = false
+
+    input.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        if (submit) {
+          nextWords.click()
+          submit = false
+          input.value = ''
+          hint.style.display = 'none'
+          return 
+        }
+        if (input.value === word) {
+          judge.style.color = 'green'
+          judge.textContent = '正确'
+        } else {
+          judge.style.color = 'red'
+          judge.textContent = '错误'
+        }
+        right_answers.textContent = word
+        hint.style.display = 'inline-block'
+        submit = true
+      }
+    })
+  </script>
+</body>
+</html>
