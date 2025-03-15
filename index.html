@@ -63,7 +63,7 @@
 </head>
 <body>
   <div class="app">
-    <h1>输入单词（例：apple,banana,...,little）</h1>
+    <h1>输入单词（单词间用回车分隔）</h1>
     <textarea></textarea>
     <button class="setWords">确定</button>
     <button class="nextWords">继续</button>
@@ -92,7 +92,7 @@
     let continue_words = []
 
     setWords.addEventListener('click', () => {
-      words = textarea.value.split(', ')
+      words = textarea.value.split('\n')
       continue_words = words
       textarea.style.backgroundColor = 'black'
       setWords.disabled = true
@@ -139,7 +139,6 @@
           wrong_words.push(word)
           console.log('错误单词' + wrong_words.toString())
           continue_words.splice(index, 1)
-          console.log(continue_words, index)
           curr_over = true
           nextWords.click()
         }
